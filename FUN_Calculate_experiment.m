@@ -1,0 +1,137 @@
+function [N,M] = FUN_Calculate_experiment(Q,Desbs1,Desbs2,numPt,MeaTe1s,MeaTte2,MeaTo2o1,E1,E2,M1,M2,matAng1,matAng2)
+%UNTITLED5 此处提供此函数的摘要
+%   此处提供详细说明
+%%%%%%%%%%% 计算含误差的位姿变换矩阵Tst
+for i=1:numPt/2
+    MeaTts1(i*4-3:i*4,:)=MeaTe1s*M1(:,:,i)*MeaTo2o1*E1(:,:,i)*MeaTte2;
+    MeaTst1(i*4-3:i*4,:)=inv(MeaTts1(i*4-3:i*4,:)); %第一组数据的含误差的位姿变换矩阵Tst
+    MeaTts2(i*4-3:i*4,:)=MeaTe1s*M2(:,:,i)*MeaTo2o1*E2(:,:,i)*MeaTte2;
+    MeaTst2(i*4-3:i*4,:)=inv(MeaTts2(i*4-3:i*4,:)); %第二组数据的含误差的位姿变换矩阵Tst
+end
+%%%%%%%%%%%  END
+
+%%%%%%%%%%% 计算不含误差的位姿变换矩阵DseTst
+% for i=1:numPt/2
+%     DesTts1(i*4-3:i*4,:)=DesTe1s*M1(:,:,i)*DesTo2o1*E1_Des(:,:,i)*DesTte2;
+%     DesTst1(i*4-3:i*4,:)=inv(DesTts1(i*4-3:i*4,:));
+%     DesTts2(i*4-3:i*4,:)=DesTe1s*M2(:,:,i)*DesTo2o1*E2_Des(:,:,i)*DesTte2;
+%     DesTst2(i*4-3:i*4,:)=inv(DesTts2(i*4-3:i*4,:));
+% end
+%%%%%%%%%%%  END
+
+
+%%%%%%%%%%% 计算含误差的位姿变换矩阵Tbt
+% Desbs(i*4-3:i*4,:)=DesTe1s*DesTo1e1(:,:,i)*DesTo2o1*DesTse(:,:,i)*DesTte2*Desbt;  %不含误差B到s的变换矩阵Tbs
+for i=1:numPt/2
+%     Desbs1(i*4-3:i*4,:)=DesTe1s*M1(:,:,i)*DesTo2o1*E1_Des(:,:,i)*DesTte2*Desbt; %不含误差真实的B到s的变换矩阵Tbs
+%     Desbs2(i*4-3:i*4,:)=DesTe1s*M2(:,:,i)*DesTo2o1*E2_Des(:,:,i)*DesTte2*Desbt;
+    MeaTbt1(i*4-3:i*4,:)=MeaTst1(i*4-3:i*4,:)*Desbs1(:,:,i); %含误差的位姿变换矩阵Tbt
+    MeaTbt2(i*4-3:i*4,:)=MeaTst2(i*4-3:i*4,:)*Desbs2(:,:,i);
+%     DesTbt1(i*4-3:i*4,:)=DesTst1(i*4-3:i*4,:)*Desbs1(i*4-3:i*4,:); %不含误差的位姿变换矩阵Tbt
+%     DesTbt2(i*4-3:i*4,:)=DesTst2(i*4-3:i*4,:)*Desbs2(i*4-3:i*4,:);
+end
+%%%%%%%%%%%  END
+% nPt=size(Ps1,2);%所测点数
+% Desdq=[DesdqR;Do2o1';De1s';Dte2'];
+
+%%%%%%%%%%%%%%%%%步骤2：计算矩阵G%%%%%%%%%%%%%%%%%%%%%
+G1=[];
+G2=[];
+for i=1:numPt/2
+    To2s1=MeaTe1s*M1(:,:,i)*MeaTo2o1;
+    To2s2=MeaTe1s*M2(:,:,i)*MeaTo2o1;
+    Tso21=inv(To2s1);
+    Tso22=inv(To2s2);
+
+    Tts1=MeaTe1s*M1(:,:,i)*MeaTo2o1*E1(:,:,i)*MeaTte2;
+    Tts2=MeaTe1s*M2(:,:,i)*MeaTo2o1*E2(:,:,i)*MeaTte2;
+
+    Theta1i=matAng1(i,:); %逆运动学求解第一个姿态的关节变量
+    Theta2i=matAng2(i,:); %逆运动学求解第二个姿态的关节变量
+    Q1i=[Q(:,1:2),Theta1i',Q(:,4:5)];%更新关节参数
+    Q2i=[Q(:,1:2),Theta2i',Q(:,4:5)];%更新关节参数
+    [G1i]=CalG_Dualrobot1_experiment(Q1i,To2s1,MeaTe1s,Tts1,MeaTte2);  %计算G1
+    [G2i]=CalG_Dualrobot1_experiment(Q2i,To2s2,MeaTe1s,Tts2,MeaTte2);  %计算G2
+    G1=[G1;G1i];
+    G2=[G2;G2i];
+
+%     sanjiao_1_S(i*4-3:i*4,:)=(DesTts1(i*4-3:i*4,:)-MeaTts1(i*4-3:i*4,:))/(MeaTts1(i*4-3:i*4,:)); %计算△s
+%     sanjiao_2_S(i*4-3:i*4,:)=(DesTts2(i*4-3:i*4,:)-MeaTts2(i*4-3:i*4,:))/(MeaTts2(i*4-3:i*4,:));
+
+%     sanjiao_11_S(i*4-3:i*4,:)=D2T(G1(i*6-5:i*6,:)*Desdq);
+%     sanjiao_22_S(i*4-3:i*4,:)=D2T(G2(i*6-5:i*6,:)*Desdq);
+
+%     Formula1_47=DesTbt1(i*4-3:i*4,:)-inv(MeaTts1(i*4-3:i*4,:)+DDS1i(i*4-3:i*4,:)*MeaTts1(i*4-3:i*4,:))*Desbs1(i*4-3:i*4,:);
+%     Formula2_47=DesTbt2(i*4-3:i*4,:)-inv(MeaTts2(i*4-3:i*4,:)+DDS2i(i*4-3:i*4,:)*MeaTts2(i*4-3:i*4,:))*Desbs2(i*4-3:i*4,:);
+%     right_end1(i*4-3:i*4,:)=inv(MeaTts1(i*4-3:i*4,:)+DDS1i(i*4-3:i*4,:)*MeaTts1(i*4-3:i*4,:))*Desbs1(i*4-3:i*4,:);
+%     right_end2(i*4-3:i*4,:)=inv(MeaTts2(i*4-3:i*4,:)+DDS2i(i*4-3:i*4,:)*MeaTts2(i*4-3:i*4,:))*Desbs2(i*4-3:i*4,:);
+    
+end
+%%%%%%%%%%%  END
+
+
+
+
+% for i=1:numPt/2
+%     sanjiao_1_S(i*4-3:i*4,:)=(DesTts1(i*4-3:i*4,:)-MeaTts1(i*4-3:i*4,:))*inv(MeaTts1(i*4-3:i*4,:)); %计算△s
+%     sanjiao_2_S(i*4-3:i*4,:)=(DesTts2(i*4-3:i*4,:)-MeaTts2(i*4-3:i*4,:))*inv(MeaTts2(i*4-3:i*4,:));
+% 
+%     sanjiao_11_S(i*4-3:i*4,:)=D2T(G1(i*6-5:i*6,:)*Desdq);
+%     sanjiao_22_S(i*4-3:i*4,:)=D2T(G2(i*6-5:i*6,:)*Desdq);
+% end
+
+
+
+%%%%%%%%%%%%%%%%%计算矩阵M和N %%%%%%%%%%%%%%%%%%%%%
+for i=1:numPt/2
+
+    KRx2(3*i-2:3*i,:)=MeaTbt2(i*4-3:i*4-1,1:3)*[0 0 0;0 0 -1;0 1 0]*Desbs2(1:3,1:3,i)'*G2(6*i-2:6*i,:);
+    KRx1(3*i-2:3*i,:)=MeaTbt1(i*4-3:i*4-1,1:3)*[0 0 0;0 0 -1;0 1 0]*Desbs1(1:3,1:3,i)'*G1(6*i-2:6*i,:);
+    KRy2(3*i-2:3*i,:)=MeaTbt2(i*4-3:i*4-1,1:3)*[0 0 1;0 0 0;-1 0 0]*Desbs2(1:3,1:3,i)'*G2(6*i-2:6*i,:);
+    KRy1(3*i-2:3*i,:)=MeaTbt1(i*4-3:i*4-1,1:3)*[0 0 1;0 0 0;-1 0 0]*Desbs1(1:3,1:3,i)'*G1(6*i-2:6*i,:);
+    KRz2(3*i-2:3*i,:)=MeaTbt2(i*4-3:i*4-1,1:3)*[0 -1 0;1 0 0;0 0 0]*Desbs2(1:3,1:3,i)'*G2(6*i-2:6*i,:);
+    KRz1(3*i-2:3*i,:)=MeaTbt1(i*4-3:i*4-1,1:3)*[0 -1 0;1 0 0;0 0 0]*Desbs1(1:3,1:3,i)'*G1(6*i-2:6*i,:);
+    K1(3*i-2:3*i,:)=MeaTts1(4*i-3:4*i-1,1:3)'*[-eye(3,3),Antisymmetric(Desbs1(1:3,4,i))]*G1(6*i-5:6*i,:);
+    K2(3*i-2:3*i,:)=MeaTts2(4*i-3:4*i-1,1:3)'*[-eye(3,3),Antisymmetric(Desbs2(1:3,4,i))]*G2(6*i-5:6*i,:);
+    N(12*i-11:12*i,:)=[KRx2(3*i-2:3*i,:)-KRx1(3*i-2:3*i,:);KRy2(3*i-2:3*i,:)-KRy1(3*i-2:3*i,:)...
+        ;KRz2(3*i-2:3*i,:)-KRz1(3*i-2:3*i,:);K1(3*i-2:3*i,:)-K2(3*i-2:3*i,:)];
+    M(12*i-11:12*i,:)=[MeaTbt1(i*4-3:i*4-1,1:3)*[1 0 0]'-MeaTbt2(i*4-3:i*4-1,1:3)*[1 0 0]';...
+        MeaTbt1(i*4-3:i*4-1,1:3)*[0 1 0]'-MeaTbt2(i*4-3:i*4-1,1:3)*[0 1 0]'; ...
+        MeaTbt1(i*4-3:i*4-1,1:3)*[0 0 1]'-MeaTbt2(i*4-3:i*4-1,1:3)*[0 0 1]';...
+        MeaTbt2(i*4-3:i*4-1,4)-MeaTbt1(i*4-3:i*4-1,4)];
+% 
+%     ER=N(12*i-11:12*i,:)*Desdq-M(12*i-11:12*i,:);
+%     Norm_ER=norm(ER)/norm(M(12*i-11:12*i,:));
+% 
+%     Ds=T2D(DDS1i(i*4-3:i*4,:));
+%     Ds1=G1(6*i-5:6*i,:)*Desdq;
+%     right_end11(i*4-3:i*4,:)=MeaTbt1(i*4-3:i*4,:)+[-MeaTbt1(i*4-3:i*4-1,1:3)*Antisymmetric(Desbs1(i*4-3:i*4-1,1:3)'*Ds(4:6)),K1(3*i-2:3*i,:)*Desdq;0,0,0,0];
+%     right_end111(i*4-3:i*4,:)=MeaTbt1(i*4-3:i*4,:)+[-MeaTts1(4*i-3:4*i-1,1:3)'*Antisymmetric(Ds(4:6))*Desbs1(i*4-3:i*4-1,1:3),MeaTts1(4*i-3:4*i-1,1:3)'*(Antisymmetric(Ds(4:6))'*Desbs1(i*4-3:i*4-1,4)-Ds(1:3));0 0 0 0];
+%     right_end1111(i*4-3:i*4,:)=[MeaTts1(4*i-3:4*i-1,1:3)'*(eye(3,3)+Antisymmetric(Ds(4:6))'),-MeaTts1(4*i-3:4*i-1,1:3)'*(MeaTts1(4*i-3:4*i-1,4)+Ds(1:3));0 0 0 1]*Desbs1(i*4-3:i*4,:);
+end
+
+%%%%%%%%%%%%%%%%%计算矩阵M和N %%%%%%%%%%%%%%%%%%%%%
+% for i=1:numPt/2
+% 
+%     KRx2(3*i-2:3*i,:)=MeaTbt2(i*4-3:i*4-1,1:3)*[0 0 0;0 0 -1;0 1 0]*Desbs2(1:3,1:3,i)'*G2(6*i-2:6*i,:);
+%     KRx1(3*i-2:3*i,:)=MeaTbt1(i*4-3:i*4-1,1:3)*[0 0 0;0 0 -1;0 1 0]*Desbs1(1:3,1:3,i)'*G1(6*i-2:6*i,:);
+%     KRy2(3*i-2:3*i,:)=MeaTbt2(i*4-3:i*4-1,1:3)*[0 0 1;0 0 0;-1 0 0]*Desbs2(1:3,1:3,i)'*G2(6*i-2:6*i,:);
+%     KRy1(3*i-2:3*i,:)=MeaTbt1(i*4-3:i*4-1,1:3)*[0 0 1;0 0 0;-1 0 0]*Desbs1(1:3,1:3,i)'*G1(6*i-2:6*i,:);
+%     KRz2(3*i-2:3*i,:)=MeaTbt2(i*4-3:i*4-1,1:3)*[0 -1 0;1 0 0;0 0 0]*Desbs2(1:3,1:3,i)'*G2(6*i-2:6*i,:);
+%     KRz1(3*i-2:3*i,:)=MeaTbt1(i*4-3:i*4-1,1:3)*[0 -1 0;1 0 0;0 0 0]*Desbs1(1:3,1:3,i)'*G1(6*i-2:6*i,:);
+%     K1(3*i-2:3*i,:)=MeaTts1(4*i-3:4*i-1,1:3)'*[-eye(3,3),Antisymmetric(Desbs1(1:3,4,i))]*G1(6*i-5:6*i,:);
+%     K2(3*i-2:3*i,:)=MeaTts2(4*i-3:4*i-1,1:3)'*[-eye(3,3),Antisymmetric(Desbs2(1:3,4,i))]*G2(6*i-5:6*i,:);
+%     N(3*i-2:3*i,:)=K1(3*i-2:3*i,:)-K2(3*i-2:3*i,:);
+%     M(3*i-2:3*i,:)=MeaTbt2(i*4-3:i*4-1,4)-MeaTbt1(i*4-3:i*4-1,4);
+% %     ER=N(3*i-2:3*i,:)*Desdq-M(3*i-2:3*i,:);
+% 
+% 
+% %     Ds=T2D(DDS1i(i*4-3:i*4,:));
+% %     Ds1=G1(6*i-5:6*i,:)*Desdq;
+% %     right_end11(i*4-3:i*4,:)=MeaTbt1(i*4-3:i*4,:)+[-MeaTbt1(i*4-3:i*4-1,1:3)*Antisymmetric(Desbs1(i*4-3:i*4-1,1:3)'*Ds(4:6)),K1(3*i-2:3*i,:)*Desdq;0,0,0,0];
+% %     right_end111(i*4-3:i*4,:)=MeaTbt1(i*4-3:i*4,:)+[-MeaTts1(4*i-3:4*i-1,1:3)'*Antisymmetric(Ds(4:6))*Desbs1(i*4-3:i*4-1,1:3),MeaTts1(4*i-3:4*i-1,1:3)'*(Antisymmetric(Ds(4:6))'*Desbs1(i*4-3:i*4-1,4)-Ds(1:3));0 0 0 0];
+% %     right_end1111(i*4-3:i*4,:)=[MeaTts1(4*i-3:4*i-1,1:3)'*(eye(3,3)+Antisymmetric(Ds(4:6))'),-MeaTts1(4*i-3:4*i-1,1:3)'*(MeaTts1(4*i-3:4*i-1,4)+Ds(1:3));0 0 0 1]*Desbs1(i*4-3:i*4,:);
+% end
+
+
+end

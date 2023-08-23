@@ -1,0 +1,224 @@
+clear;
+numPt=4;%Number of poses
+
+
+%%%%%%  Set the joint link parameter matrix Q and the theoretical joint error matrix dQ
+
+
+   Q =  [0         0         0      780/1000      0
+        -pi/2    320/1000   -pi/2       0           0
+         0      1125/1000      0          0            0
+       -pi/2      200/1000     -pi       1142.5/1000      0
+       -pi/2         0         0         0            0
+       -pi/2        0        pi      200/1000        0];% DH model of ABB 6700-200/2.60
+
+dQ=[0.0054    0.0036    0.0015    0.0024         0
+    0.0010    0.0010    0.0033    0.0023    0.0023
+    0.0010    0.0006    0.0010    0.0023    0.0041
+    0.0019    0.0018    0.0010    0.0010         0
+    0.0051    0.0061    0.0023    0.0010         0
+    0.0023    0.0007    0.0010    0.0020         0];
+
+DesQ=Q+dQ;
+DesdqR=[dQ(:,2);dQ(:,1);dQ(:,4);dQ(:,3);dQ(:,5)];%Convert to error vector
+% CpsQ=Q;
+for numPt=100:2:100
+    CpsQ=Q;
+        [matAng,Desbt,Destb,DesTse1,DesTe1s,DesTo1o2,DesTo2o1,DesTe1t,DesTte2,DesTse,MeaTse,DesTo1e1,simPs] = FUN_SimulationData_Dualrobot(numPt,CpsQ,dQ,DesQ,DesdqR);% Simulation and modeling using SimulationData3.m
+        [RXS,RYS,RZS,txs,tys,tzs,E1,E2,E1_Des,E2_Des,M1,M2,matAng1,matAng2,Ps1,RAN,RBN,RCN,tan,tbn,tcn] = FUN_SimCalib3_Dualrobot_3(matAng,DesTe1s,DesTo2o1,DesTte2,DesTse,MeaTse,DesTo1e1,simPs,numPt);%Initial calibration calculation of the dual robot system
+
+
+        
+            %%%%%%%%Step 1: Give the pose error between the measured end frame and the scanner Te1s%%%%%%%%%%%%%  X
+            X=[RXS,txs;[0 0 0],1];
+            X=inv(X);
+            dT=inv(X)*DesTe1s*1;
+            dT(1,1)=0;
+            dT(2,2)=0;
+            dT(3,3)=0;
+            dT(4,4)=0;
+            % dT=dT/1000;
+            dT=D2T(T2D(dT));
+            dT=dT*1;
+            De1s=T2D(dT)';
+            MeaTe1s=DesTe1s/((eye(4)+dT));
+            MeaTe1s_11=MeaTe1s;
+            MeaTe1s_11(1:3,1:3)=Orth_XieHe(MeaTe1s(1:3,1:3));
+            CpsTe1s=MeaTe1s_11;
+
+            %         dT1=inv(X)*(DesTe1s-X);
+
+
+            %%%%%%%%Step 2: Give the pose error between the tool frame and the end of the machining robot Tte2%%%%%%%%%%%%%  Z
+            Z=[RZS,tzs;[0 0 0],1];
+            dT=inv(Z)*DesTte2;
+            dT(1,1)=0;
+            dT(2,2)=0;
+            dT(3,3)=0;
+            dT(4,4)=0;
+            % dT=dT/1000;
+            dT=D2T(T2D(dT));
+            dT=dT*1;
+            Dte2=T2D(dT)';
+            MeaTte2=DesTte2/((eye(4)+dT));
+            MeaTte2_11=MeaTte2;
+            MeaTte2_11(1:3,1:3)=Orth_XieHe(MeaTte2(1:3,1:3));
+            CpsTte2=MeaTte2_11;
+
+            %         dT1=inv(Z)*(DesTte2-Z);
+
+
+            %%%%%%%%Step 3: Manually define the pose error between the robot's base coordinate system and the measurement base coordinate system To2o1%%%%%%%%%%%%%  Y
+            Y=[RYS,tys;[0 0 0],1];
+            dT=inv(Y)*DesTo2o1;
+            dT(1,1)=0;
+            dT(2,2)=0;
+            dT(3,3)=0;
+            dT(4,4)=0;
+            % dT=dT/1000;
+            dT=D2T(T2D(dT));
+            dT=dT*1;
+            Do2o1=T2D(dT)';
+            MeaTo2o1=DesTo2o1/((eye(4)+dT));
+            MeaTo2o1_11=MeaTo2o1;
+            MeaTo2o1_11(1:3,1:3)=Orth_XieHe(MeaTo2o1(1:3,1:3));
+            CpsTo2o1=MeaTo2o1_11;
+
+            %         dT1=inv(Y)*(DesTo2o1-Y);
+
+%                 ER1(i)=norm(MeaTo2o1-DesTo2o1);
+%         %     ER11(1)=norm(CpsTo2o1-DesTo2o1);
+%         ER2(i)=norm(MeaTe1s-DesTe1s);
+%         ER3(i)=norm(MeaTte2-DesTte2);
+%         ERQ(i)=norm(CpsQ-DesQ);
+%         SumERROR(i)=ER1(i)+ER2(i)+ER3(i)+ERQ(i);
+
+        [N,M,Desbs1,Desbs2] = FUN_Calculate(dQ,CpsQ,DesdqR,Desbt,DesTe1s,DesTo2o1,DesTte2,numPt,MeaTe1s_11,MeaTte2_11,MeaTo2o1_11,E1,E2,E1_Des,E2_Des,M1,M2,matAng1,matAng2,Ps1,Do2o1,Dte2,De1s);%Calculate the coefficient matrices N and M
+        [Desdq1,CaldQ,CaldQ1,dtdq,performance] = FUN_Solution_dq_wg(N,M,Do2o1,Dte2,De1s,DesdqR);  %Solve for the error vector
+
+        %% Error compensation for the dual robot system
+        CpsQ=CpsQ+[CaldQ(7:12),CaldQ(1:6),CaldQ(19:24),CaldQ(13:18),CaldQ(25:30)]; %compensate Q
+        CpsTo2o1=MeaTo2o1_11+MeaTo2o1_11*D2T(CaldQ(31:36)); % compensate MeaTo2o1
+        CpsTo2o1(1:3,1:3)=Orth_XieHe(CpsTo2o1(1:3,1:3)); % Orthogonalization of rotational components
+        CpsTe1s=MeaTe1s_11+MeaTe1s_11*D2T(CaldQ(37:42));%compensate MeaTe1s
+        CpsTe1s(1:3,1:3)=Orth_XieHe(CpsTe1s(1:3,1:3));
+        CpsTte2=MeaTte2_11+MeaTte2_11*D2T(CaldQ(43:48));%compensate MeaTte2
+        CpsTte2(1:3,1:3)=Orth_XieHe(CpsTte2(1:3,1:3));
+
+
+
+%         ER1(i+1)=norm(CpsTo2o1-DesTo2o1);
+%         %     ER11(i+1)=norm(CpsTo2o1-DesTo2o1);
+%         ER2(i+1)=norm(CpsTe1s-DesTe1s);
+%         ER3(i+1)=norm(CpsTte2-DesTte2);
+%         ERQ(i+1)=norm(CpsQ-DesQ);
+%         SumERROR(i+1)=ER1(i+1)+ER2(i+1)+ER3(i+1)+ERQ(i+1);
+
+        Q_Permance=norm(CpsQ-DesQ)/norm(Q-DesQ);  % Evaluating the robot joint error compensation performance
+
+    
+
+%     ERR1_initial(numPt)=ER1(i);
+%     %     ER11(i+1)=norm(CpsTo2o1-DesTo2o1);
+%     ERR2_initial(numPt)=ER2(i);
+%     ERR3_initial(numPt)=ER3(i);
+%     ERRQ_initial(numPt)=ERQ(i);
+%     SumERRORR_initial(numPt)=SumERROR(i);
+
+
+
+
+    ERR1(numPt)=norm(CpsTo2o1-DesTo2o1);
+    %     ER11(i+1)=norm(CpsTo2o1-DesTo2o1);
+    ERR2(numPt)=norm(CpsTe1s-DesTe1s);
+    ERR3(numPt)=norm(CpsTte2-DesTte2);
+    ERRQ(numPt)=norm(CpsQ-DesQ);
+    SumERRORR(numPt)=ERR1(numPt)+ERR2(numPt)+ERR3(numPt)+ERRQ(numPt);
+
+end
+%% Wu's method
+% RXS=Orth_XieHe(RXS);
+% RYS=Orth_XieHe(RYS);
+% RZS=Orth_XieHe(RZS);
+
+
+
+RXS=inv(MeaTe1s(1:3,1:3));
+RYS=MeaTo2o1(1:3,1:3);
+RZS=MeaTte2(1:3,1:3);
+
+[ xnum2] = wuliao( RAN,RBN,RCN,RXS,RYS,RZS,300);
+x1=xnum2(:,1:3);
+x2=xnum2(:,4:6);
+x3=xnum2(:,7:9);
+[t,txs1,tys1,tzs1] = closetranslation( RAN,RBN,RCN,x1,x2,x3,tan,tbn,tcn );
+xnum2(:,10)=txs1;
+xnum2(:,11)=tys1;
+xnum2(:,12)=tzs1;
+
+X_wuliao=[x1,txs1;[0 0 0],1];
+X_wuliao=inv(X_wuliao);
+MeaTe1s_wuliao=X_wuliao;
+MeaTe1s_wuliao(1:3,1:3)=Orth_XieHe(MeaTe1s_wuliao(1:3,1:3));
+
+Z_wuliao=[x3,tzs1;[0 0 0],1];
+MeaTte2_wuliao=Z_wuliao;
+MeaTte2_wuliao(1:3,1:3)=Orth_XieHe(MeaTte2_wuliao(1:3,1:3));
+
+
+Y_wuliao=[x2,tys1;[0 0 0],1];
+MeaTo2o1_wuliao=Y_wuliao;
+MeaTo2o1_wuliao(1:3,1:3)=Orth_XieHe(MeaTo2o1_wuliao(1:3,1:3));
+%% Wang's iterative method
+m=1; %Frequency of gradient update
+miu=2;
+f=1;
+miu2=0;%1/1000;
+miu3=0;
+[ xnum1,yita1] = numsolution( RAN,RBN,RCN,tan,tbn,tcn,RXS,RYS,RZS,txs,tys,tzs,m,miu,300,miu2,miu3,f); 
+x1=xnum1(:,1:3);
+x2=xnum1(:,4:6);
+x3=xnum1(:,7:9);
+[t,txs1,tys1,tzs1] = closetranslation( RAN,RBN,RCN,x1,x2,x3,tan,tbn,tcn );
+xnum1(:,10)=txs1;
+xnum1(:,11)=tys1;
+xnum1(:,12)=tzs1;
+
+X_iterative=[x1,txs1;[0 0 0],1];
+X_iterative=inv(X_iterative);
+MeaTe1s_iterative=X_iterative;
+MeaTe1s_iterative(1:3,1:3)=Orth_XieHe(MeaTe1s_iterative(1:3,1:3));
+
+Z_iterative=[x3,tzs1;[0 0 0],1];
+MeaTte2_iterative=Z_iterative;
+MeaTte2_iterative(1:3,1:3)=Orth_XieHe(MeaTte2_iterative(1:3,1:3));
+
+
+Y_iterative=[x2,tys1;[0 0 0],1];
+MeaTo2o1_iterative=Y_iterative;
+MeaTo2o1_iterative(1:3,1:3)=Orth_XieHe(MeaTo2o1_iterative(1:3,1:3));
+
+%% Error calculation and comparation
+Desbs=[Desbs1;Desbs2];
+for i=1:numPt
+    CpsTse(:,:,i)=MyFkine([CpsQ(:,1:2),matAng(i,:)'+CaldQ(19:24),CpsQ(:,4:5)]);  %Recalculate the position and pose of the machining robot with errors
+
+%     MER(:,:,i)=MeaTe1s*DesTo1e1(:,:,i)*MeaTo2o1*MeaTse(:,:,i)*MeaTte2*Desbt*inv(Desbs(i*4-3:i*4,:));  %Closed-loop error of the entire system before compensation
+    MER(:,:,i)=X*DesTo1e1(:,:,i)*Y*MeaTse(:,:,i)*Z*Desbt*inv(Desbs(i*4-3:i*4,:));  %Closed-loop error of the entire system before compensation
+    ER(i)=norm(MER(:,:,i)-eye(4));
+    CpsMER(:,:,i)=CpsTe1s*DesTo1e1(:,:,i)*CpsTo2o1*CpsTse(:,:,i)*CpsTte2*Desbt*inv(Desbs(i*4-3:i*4,:));   %Closed-loop error of the entire system after compensation
+    CpsER(i)=norm(CpsMER(:,:,i)-eye(4));
+    MER_wuliao(:,:,i)=MeaTe1s_wuliao*DesTo1e1(:,:,i)*MeaTo2o1_wuliao*MeaTse(:,:,i)*MeaTte2_wuliao*inv(Desbs(i*4-3:i*4,:));  %Closed-loop error of the whole system using wu's method
+    ER_wuliao(i)=norm(MER_wuliao(:,:,i)-eye(4));
+    MER_iterative(:,:,i)=MeaTe1s_iterative*DesTo1e1(:,:,i)*MeaTo2o1_iterative*MeaTse(:,:,i)*MeaTte2_iterative*inv(Desbs(i*4-3:i*4,:));  %Closed-loop error of the whole system using wang's iterative solving method
+    ER_iterative(i)=norm(MER_iterative(:,:,i)-eye(4));    
+end
+
+
+
+data1=[mean(CpsER),std(CpsER)];  %Error after compensation
+data2=[mean(ER),std(ER)];  %Original error before compensation, initial calibration
+data3=[mean(ER_wuliao),std(ER_wuliao)]; %Error using Wuliao's method
+data4=[mean(ER_iterative),std(ER_iterative)];  % Error using TRO iterative method
+plot_err_bar(data1, data2, data3,data4);  %Plotting histogram
+

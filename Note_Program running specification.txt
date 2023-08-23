@@ -1,0 +1,4 @@
+The running environment is matlab 2021b or later.
+
+1. Run "main_Dualrobot_3_english.m". 
+2. The program will automatically complete simulation data generation, initial calibration, error compensation, error comparison and drawing of various calibration methods.

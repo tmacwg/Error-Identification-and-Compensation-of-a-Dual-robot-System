@@ -1,0 +1,39 @@
+New_dQ1;
+  %alpha   a  theta         d   beta
+ Q=[   0      0      0      0.63     0;
+     -90/180*pi   0.6    -90/180*pi         0     0;
+       0  1.28      0         0     0;
+     -90/180*pi  0.200    180/180*pi      1.592     0;
+     -90/180*pi      0      0         0     0;
+      90/180*pi     0      0      0.2     0;];%Q6650S/125
+  %G=[Da DAlpha Dd  DTheta Dbeta DDb];
+NewT=zeros(4,4,numPt);
+PeDes=zeros(3,numPt);
+PeMea=zeros(3,numPt);
+PeCps=zeros(3,numPt);
+NewQ=New_dQ1+Q;
+dQ;
+for i= 1:numPt
+tmpiQ=[NewQ(:,1:2),matAng(i,:)'+NewQ(:,3),NewQ(:,4:5)];
+NewT(:,:,i)=MyFkine(tmpiQ);
+end
+
+MeaTse=Tse;
+DesTse=Tse2;
+CpsateTse=NewT;
+Tsb;
+DesTbs=Tsb;
+for i=1:numPt
+   ps1=Tsb*MeaTse(:,:,i)*([simPs(i,:),1]'); 
+   PeMea(:,i)=ps1(1:3,1);
+    ps1=Tsb*DesTse(:,:,i)*([simPs(i,:),1]'); 
+   PeDes(:,i)=ps1(1:3,1);
+    ps1=Tsb*CpsateTse(:,:,i)*([simPs(i,:),1]');
+   PeCps(:,i)=ps1(1:3,1);
+end
+im=0;
+AveMea=0;
+AveCps=0;
+for i=1:numPt
+    AveMea=AveMea+ PeMea(:,i)-PeDes(:,i)
+end

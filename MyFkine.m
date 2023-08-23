@@ -1,0 +1,9 @@
+function oT=MyFkine(iQ);
+QQ=iQ;
+t1=CalculateT1(QQ(1,:));
+t2=CalculateT1(QQ(2,:));
+t3=CalculateT1(QQ(3,:));
+t4=CalculateT1(QQ(4,:));
+t5=CalculateT1(QQ(5,:));
+t6=CalculateT1(QQ(6,:));
+oT=t1*t2*t3*t4*t5*t6;
