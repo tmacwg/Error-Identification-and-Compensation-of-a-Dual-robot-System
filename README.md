@@ -1,5 +1,4 @@
-[![View QR/RQ/QL/LQ factorizations on File Exchange](https://www.mathworks.com/matlabcentral/images/matlab-file-exchange.svg)](https://www.mathworks.com/matlabcentral/fileexchange/16536-qr-rq-ql-lq-factorizations)
+The running environment is matlab 2021b or later.
 
-Currently RQ, QL, and LQ factorizations are not included in Matlab, although these factorizations can also be done by QR function and additional matrix manipulations if matrix is square. Therefore I wrote these mex files, which uses the internal LAPACK routines of Matlab. QR1 is added to complete the set. They can also handle empty matrices. Enforcing positive elements on diagonal R matrix or column pivoting is supported by the QR1 factorization only.
-
-
+1. Run "main_Dualrobot_3_english.m". 
+2. The program will automatically complete simulation data generation, initial calibration, error compensation, error comparison and drawing of various calibration methods.
