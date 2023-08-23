@@ -1,4 +1,5 @@
-![image](https://github.com/tmacwg/Error-Identification-and-Compensation-of-a-Dual-robot-System/assets/33611353/e8de9276-680c-413d-85bb-449385bde972)
+![image](https://github.com/tmacwg/Error-Identification-and-Compensation-of-a-Dual-robot-System/assets/33611353/29029b29-0767-4c99-a358-bbf8a96cdaea)
+
 
 This is code for a paper that has been submitted to IEEE Transactions on Robotics, names as "Error Identification and Compensation of a Dual-robot Measuring and Machining System with an Integrated Visual Sensor, Gang Wang, Hua-yan Pu, Wen-long Li, Deng-yu Xiao, Cheng Jiang, Dong-fang Wang, Jun Luo, Han Ding"
 
